@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 export default function Create() {
+    const { auth } = usePage().props;
     const [ktpPreview, setKtpPreview] = useState(null);
-    
+
     const { data, setData, post, processing, errors } = useForm({
         nama: '',
         nik: '',
@@ -22,6 +23,7 @@ export default function Create() {
         daya: '',
         kode_golongan: '',
         nomor_meter: '',
+        nik_update: '',
     });
 
     const handleKtpChange = (e) => {
@@ -103,6 +105,29 @@ export default function Create() {
                                             onChange={(e) => setData('nik', e.target.value)}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">NIK Update (16 Digit)</label>
+                                        <input
+                                            type="text"
+                                            value={data.nik_update}
+                                            onChange={(e) => {
+                                                const value = e.target.value.replace(/\D/g, '');
+                                                if (value.length <= 16) {
+                                                    setData('nik_update', value);
+                                                }
+                                            }}
+                                            placeholder="Masukkan 16 digit NIK"
+                                            maxLength="16"
+                                            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                                errors.nik_update ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                        />
+                                        {errors.nik_update && <p className="text-red-500 text-sm mt-1">{errors.nik_update}</p>}
+                                        {data.nik_update && data.nik_update.length !== 16 && (
+                                            <p className="text-orange-500 text-sm mt-1">NIK harus 16 digit (saat ini: {data.nik_update.length})</p>
+                                        )}
                                     </div>
 
                                     <div className="md:col-span-2">

@@ -125,7 +125,11 @@ class DataPelangganController extends Controller
             'daya' => 'nullable|integer',
             'kode_golongan' => 'nullable|string|max:20',
             'nomor_meter' => 'nullable|string|max:50',
+            'nik_update' => 'nullable|digits:16',
         ]);
+
+        // Auto-populate email from authenticated user
+        $validated['email'] = auth()->user()->email;
 
         // Handle KTP file upload
         if ($request->hasFile('ktp')) {
@@ -177,7 +181,7 @@ class DataPelangganController extends Controller
         $validated = $request->validate([
             'nama_update' => 'nullable|string|max:100',
             'ktp' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'email' => 'nullable|email|max:100',
+            'nik_update' => 'nullable|digits:16',
             'alamat_update' => 'nullable|string',
             'status_lapangan' => 'nullable|string|max:100',
             'ket_lapangan' => 'nullable|string',
@@ -185,6 +189,9 @@ class DataPelangganController extends Controller
             'ket_pemadanan' => 'nullable|string',
             'ket_pemadanan_lainnya' => 'nullable|string',
         ]);
+
+        // Auto-populate email from authenticated user
+        $validated['email'] = auth()->user()->email;
 
         \Log::info('Validation passed', ['has_ktp_in_validated' => isset($validated['ktp'])]);
 

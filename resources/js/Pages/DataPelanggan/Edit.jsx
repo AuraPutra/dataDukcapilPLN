@@ -64,7 +64,7 @@ export default function Edit({ pelanggan }) {
         nama_up: pelanggan.nama_up || '',
         nama_update: pelanggan.nama_update || '',
         ktp: null,
-        email: pelanggan.email || '',
+        nik_update: pelanggan.nik_update || '',
         alamat_update: pelanggan.alamat_update || '',
         status_lapangan: pelanggan.status_lapangan || '',
         ket_lapangan: pelanggan.ket_lapangan || '',
@@ -91,9 +91,17 @@ export default function Edit({ pelanggan }) {
         // --- VALIDASI MANUAL SEBELUM SUBMIT ---
 
         // 1. Cek field dasar
-        if (!data.nama_update || !data.email || !data.alamat_update || !data.status_lapangan) {
+        if (!data.nama_update || !data.alamat_update || !data.status_lapangan) {
             setAlertType('error');
-            setAlertMessage('Mohon lengkapi semua kolom wajib (Nama, Email, Status, Alamat Update).');
+            setAlertMessage('Mohon lengkapi semua kolom wajib (Nama, Status, Alamat Update).');
+            window.scrollTo(0,0);
+            return;
+        }
+
+        // 1a. Validasi NIK Update jika diisi
+        if (data.nik_update && data.nik_update.length !== 16) {
+            setAlertType('error');
+            setAlertMessage('NIK Update harus tepat 16 digit.');
             window.scrollTo(0,0);
             return;
         }
@@ -410,16 +418,27 @@ export default function Edit({ pelanggan }) {
 
                                     <div>
                                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                            Email <span className="text-red-500">*</span>
+                                            NIK Update (16 Digit)
                                         </label>
                                         <input
-                                            type="email"
-                                            value={data.email}
-                                            onChange={(e) => setData('email', e.target.value)}
-                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
-                                            placeholder="contoh@email.com"
-                                            required
+                                            type="text"
+                                            value={data.nik_update}
+                                            onChange={(e) => {
+                                                const value = e.target.value.replace(/\D/g, '');
+                                                if (value.length <= 16) {
+                                                    setData('nik_update', value);
+                                                }
+                                            }}
+                                            placeholder="Masukkan 16 digit NIK"
+                                            maxLength="16"
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                                errors.nik_update ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.nik_update && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.nik_update}</p>}
+                                        {data.nik_update && data.nik_update.length !== 16 && data.nik_update.length > 0 && (
+                                            <p className="text-orange-500 text-xs sm:text-sm mt-1">NIK harus 16 digit (saat ini: {data.nik_update.length})</p>
+                                        )}
                                     </div>
 
                                     <div>
