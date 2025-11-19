@@ -5,6 +5,7 @@ npm install styled-components
 npm install react-router-dom
 php artisan migrate
 npm install leaflet
+composer require openspout (pastikan enable zip install di php nya)
 
 #run
 npm run dev
