@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Create() {
+    const [ktpPreview, setKtpPreview] = useState(null);
+    
     const { data, setData, post, processing, errors } = useForm({
         nama: '',
         nik: '',
+        ktp: null,
         idpel: '',
         alamat: '',
         koordinat_x: '',
@@ -21,9 +24,24 @@ export default function Create() {
         nomor_meter: '',
     });
 
+    const handleKtpChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData('ktp', file);
+            // Preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setKtpPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('data-pelanggan.store'));
+        post(route('data-pelanggan.store'), {
+            forceFormData: true,
+        });
     };
 
     return (
@@ -85,6 +103,25 @@ export default function Create() {
                                             onChange={(e) => setData('nik', e.target.value)}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">KTP (Foto)</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleKtpChange}
+                                            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                                errors.ktp ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                        />
+                                        {errors.ktp && <p className="text-red-500 text-sm mt-1">{errors.ktp}</p>}
+                                        {ktpPreview && (
+                                            <div className="mt-3">
+                                                <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                                                <img src={ktpPreview} alt="KTP Preview" className="h-32 rounded border" />
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>

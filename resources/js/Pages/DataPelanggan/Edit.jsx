@@ -1,331 +1,518 @@
-import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import UserLayout from '@/Layouts/UserLayout';
 
 export default function Edit({ pelanggan }) {
-    const { data, setData, put, processing, errors } = useForm({
-        nama: pelanggan.nama || '',
-        nik: pelanggan.nik || '',
-        idpel: pelanggan.idpel || '',
-        alamat: pelanggan.alamat || '',
-        koordinat_x: pelanggan.koordinat_x || '',
-        koordinat_y: pelanggan.koordinat_y || '',
-        unitupi: pelanggan.unitupi || '',
-        nm_unitupi: pelanggan.nm_unitupi || '',
-        unitap: pelanggan.unitap || '',
-        nama_ap: pelanggan.nama_ap || '',
-        unitup: pelanggan.unitup || '',
-        nama_up: pelanggan.nama_up || '',
-        tarif: pelanggan.tarif || '',
-        daya: pelanggan.daya || '',
-        kode_golongan: pelanggan.kode_golongan || '',
-        nomor_meter: pelanggan.nomor_meter || '',
+    const [ktpPreview, setKtpPreview] = useState(null);
+    const [alertMessage, setAlertMessage] = useState(null);
+    const [alertType, setAlertType] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const { flash } = usePage().props;
+    
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
+    useEffect(() => {
+        if (flash.success) {
+            setAlertType('success');
+            setAlertMessage(flash.success);
+            setTimeout(() => {
+                setAlertMessage(null);
+            }, 5000);
+        }
+        if (flash.error) {
+            setAlertType('error');
+            setAlertMessage(flash.error);
+            setTimeout(() => {
+                setAlertMessage(null);
+            }, 5000);
+        }
+    }, [flash]);
+    
+    const sudahDisurvei =
+        pelanggan.nama_update ||
+        pelanggan.alamat_update ||
+        pelanggan.status_lapangan ||
+        pelanggan.ket_lapangan ||
+        pelanggan.ket_pemadanan;
+
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'PUT',
         nama_update: pelanggan.nama_update || '',
+        ktp: null,
+        email: pelanggan.email || '',
         alamat_update: pelanggan.alamat_update || '',
         status_lapangan: pelanggan.status_lapangan || '',
         ket_lapangan: pelanggan.ket_lapangan || '',
+        ket_lapangan_lainnya: '', // Asumsi data ini tidak disimpan di DB terpisah, atau bisa diambil jika ada
         ket_pemadanan: pelanggan.ket_pemadanan || '',
+        ket_pemadanan_lainnya: '',
     });
+
+    const handleKtpChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData('ktp', file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setKtpPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('data-pelanggan.update', pelanggan.id));
+
+        // --- VALIDASI MANUAL SEBELUM SUBMIT ---
+        
+        // 1. Cek field dasar
+        if (!data.nama_update || !data.email || !data.alamat_update || !data.status_lapangan) {
+            setAlertType('error');
+            setAlertMessage('Mohon lengkapi semua kolom wajib (Nama, Email, Status, Alamat Update).');
+            window.scrollTo(0,0);
+            return;
+        }
+
+        // 2. Cek KTP (Wajib jika belum ada data lama dan tidak ada upload baru)
+        if (!pelanggan.ktp && !data.ktp) {
+            setAlertType('error');
+            setAlertMessage('Foto KTP wajib diunggah.');
+            window.scrollTo(0,0);
+            return;
+        }
+
+        // 3. Cek Logika Status Lapangan
+        if (data.status_lapangan === 'Tidak bisa didata') {
+            if (!data.ket_lapangan) {
+                setAlertType('error');
+                setAlertMessage('Keterangan lapangan wajib dipilih.');
+                return;
+            }
+            if (data.ket_lapangan === 'Lainnya' && !data.ket_lapangan_lainnya) {
+                setAlertType('error');
+                setAlertMessage('Mohon isi detail keterangan lainnya.');
+                return;
+            }
+        } else if (data.status_lapangan === 'Bisa didata') {
+            if (!data.ket_pemadanan) {
+                setAlertType('error');
+                setAlertMessage('Keterangan pemadanan wajib dipilih.');
+                return;
+            }
+            if (data.ket_pemadanan === 'Lainnya' && !data.ket_pemadanan_lainnya) {
+                setAlertType('error');
+                setAlertMessage('Mohon isi detail keterangan lainnya.');
+                return;
+            }
+        }
+
+        // --- PERSIAPAN DATA ---
+
+        // Jika ket_lapangan bukan "Lainnya", kosongkan ket_lapangan_lainnya
+        const submitData = { ...data };
+        if (data.ket_lapangan !== 'Lainnya') {
+            submitData.ket_lapangan_lainnya = '';
+        }
+        // Jika ket_pemadanan bukan "Lainnya", kosongkan ket_pemadanan_lainnya
+        if (data.ket_pemadanan !== 'Lainnya') {
+            submitData.ket_pemadanan_lainnya = '';
+        }
+        
+        post(route('data-pelanggan.update', pelanggan.id), {
+            data: submitData,
+            forceFormData: true,
+            onSuccess: () => {
+                setAlertType('success');
+                setAlertMessage('Data pelanggan berhasil diperbarui!');
+                setTimeout(() => {
+                    setAlertMessage(null);
+                }, 3000);
+            },
+            onError: (errors) => {
+                setAlertType('error');
+                setAlertMessage('Gagal memperbarui data. Periksa isian Anda.');
+                setTimeout(() => {
+                    setAlertMessage(null);
+                }, 3000);
+            }
+        });
     };
 
     return (
-        <>
+        <UserLayout>
             <Head title={`Edit Pelanggan - ${pelanggan.nama}`} />
 
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+            {alertMessage && (
+                <div className={`fixed top-2 sm:top-4 right-2 sm:right-4 z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 text-sm sm:text-base ${
+                    alertType === 'success' 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-red-500 text-white'
+                }`}>
+                    {alertType === 'success' ? (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    )}
+                    <span>{alertMessage}</span>
+                </div>
+            )}
+
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-3 sm:py-8 px-2 sm:px-4">
                 <div className="max-w-4xl mx-auto">
-                    {/* Header */}
-                    <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h1 className="text-3xl font-bold text-gray-800">
+
+                    <div className="bg-white rounded-lg sm:rounded-2xl shadow-lg sm:shadow-xl p-3 sm:p-6 mb-3 sm:mb-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                            <div className="flex-1">
+                                <h1 className="text-lg sm:text-3xl font-bold text-gray-800">
                                     Edit Data Pelanggan
                                 </h1>
-                                <p className="text-gray-600 mt-1">
-                                    Perbarui informasi pelanggan
-                                </p>
+
+                                {sudahDisurvei ? (
+                                    <span className="inline-block mt-2 px-3 sm:px-4 py-1 bg-green-600 text-white text-xs sm:text-sm font-semibold rounded-full">
+                                        ✓ Telah Disurvei
+                                    </span>
+                                ) : (
+                                    <span className="inline-block mt-2 px-3 sm:px-4 py-1 bg-gray-400 text-white text-xs sm:text-sm font-semibold rounded-full">
+                                        Belum Disurvei
+                                    </span>
+                                )}
                             </div>
+
                             <Link
-                                href={route('data-pelanggan.show', pelanggan.id)}
-                                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                                href={route('data-pelanggan.index', pelanggan.id)}
+                                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-700 text-sm sm:text-base rounded-lg hover:bg-gray-300 transition-colors duration-200 text-center"
                             >
                                 Batal
                             </Link>
                         </div>
                     </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl p-6">
-                        <div className="space-y-6">
-                            {/* Informasi Identitas */}
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
+                    <form onSubmit={handleSubmit} className="bg-white rounded-lg sm:rounded-2xl shadow-lg sm:shadow-xl p-3 sm:p-6">
+                        <div className="space-y-4 sm:space-y-6">
+
+                            {/* Bagian Identitas (Disabled) */}
+                            <section>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800 border-b pb-2 mb-3 sm:mb-4">
                                     Informasi Identitas
                                 </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                                    {[
+                                        ['Nama', pelanggan.nama],
+                                        ['NIK', pelanggan.nik],
+                                        ['ID Pelanggan', pelanggan.idpel],
+                                        ['Nomor Meter', pelanggan.nomor_meter],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                {label}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                disabled
+                                                value={value}
+                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* Bagian Listrik (Disabled) */}
+                            <section>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800 border-b pb-2 mb-3 sm:mb-4">
+                                    Informasi Listrik
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                                    {[
+                                        ['Tarif', pelanggan.tarif],
+                                        ['Daya (VA)', pelanggan.daya],
+                                        ['Kode Golongan', pelanggan.kode_golongan],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                {label}
+                                            </label>
+                                            <input
+                                                disabled
+                                                value={value}
+                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* Bagian Lokasi (Disabled) */}
+                            <section>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800 border-b pb-2 mb-3 sm:mb-4">
+                                    Lokasi
+                                </h2>
+
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Alamat</label>
+                                <textarea
+                                    disabled
+                                    value={pelanggan.alamat}
+                                    className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                />
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-3 sm:mt-4">
+                                    {[
+                                        ['Koordinat X', pelanggan.koordinat_x],
+                                        ['Koordinat Y', pelanggan.koordinat_y],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                {label}
+                                            </label>
+                                            <input
+                                                disabled
+                                                value={value}
+                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                             {/* Bagian Unit (Disabled) */}
+                            <section>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800 border-b pb-2 mb-3 sm:mb-4">
+                                    Informasi Unit
+                                </h2>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                                    {[
+                                        ['Unit UPI', pelanggan.unitupi],
+                                        ['Nama UPI', pelanggan.nm_unitupi],
+                                        ['Unit AP', pelanggan.unitap],
+                                        ['Nama AP', pelanggan.nama_ap],
+                                        ['Unit UP', pelanggan.unitup],
+                                        ['Nama UP', pelanggan.nama_up],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                {label}
+                                            </label>
+                                            <input
+                                                disabled
+                                                value={value}
+                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* === BAGIAN FORM INPUT === */}
+                            <section>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800 border-b pb-2 mb-3 sm:mb-4">
+                                    Informasi Update & Keterangan
+                                </h2>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Nama <span className="text-red-500">*</span>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Nama Update <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="text"
-                                            value={data.nama}
-                                            onChange={(e) => setData('nama', e.target.value)}
-                                            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                                errors.nama ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                            value={data.nama_update}
+                                            onChange={(e) => setData('nama_update', e.target.value)}
+                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
                                             required
                                         />
-                                        {errors.nama && <p className="text-red-500 text-sm mt-1">{errors.nama}</p>}
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">NIK</label>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Email <span className="text-red-500">*</span>
+                                        </label>
                                         <input
-                                            type="text"
-                                            value={data.nik}
-                                            onChange={(e) => setData('nik', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                            placeholder="contoh@email.com"
+                                            required
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">ID Pelanggan</label>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            KTP (Foto) {!pelanggan.ktp && <span className="text-red-500">*</span>}
+                                        </label>
                                         <input
-                                            type="text"
-                                            value={data.idpel}
-                                            onChange={(e) => setData('idpel', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleKtpChange}
+                                            // Wajib diisi HANYA JIKA belum ada KTP di database
+                                            required={!pelanggan.ktp}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                                errors.ktp ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Meter</label>
-                                        <input
-                                            type="text"
-                                            value={data.nomor_meter}
-                                            onChange={(e) => setData('nomor_meter', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
+                                        {errors.ktp && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.ktp}</p>}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Informasi Listrik */}
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
-                                    Informasi Listrik
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Tarif</label>
-                                        <input
-                                            type="text"
-                                            value={data.tarif}
-                                            onChange={(e) => setData('tarif', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                {(ktpPreview || pelanggan.ktp) && (
+                                    <div className="mt-3 sm:mt-4">
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Preview KTP
+                                        </label>
+                                        <img 
+                                            src={ktpPreview || `/storage/${pelanggan.ktp}`} 
+                                            alt="KTP Preview" 
+                                            className="h-24 sm:h-40 rounded border shadow-sm object-cover max-w-full"
                                         />
                                     </div>
+                                )}
 
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-3 sm:mt-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Daya (VA)</label>
-                                        <input
-                                            type="number"
-                                            value={data.daya}
-                                            onChange={(e) => setData('daya', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Kode Golongan</label>
-                                        <input
-                                            type="text"
-                                            value={data.kode_golongan}
-                                            onChange={(e) => setData('kode_golongan', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Status Lapangan <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={data.status_lapangan}
+                                            onChange={(e) => setData('status_lapangan', e.target.value)}
+                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                            required
+                                        >
+                                            <option value="">-- Pilih Status --</option>
+                                            <option value="Bisa didata">Bisa didata</option>
+                                            <option value="Tidak bisa didata">Tidak bisa didata</option>
+                                        </select>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Lokasi */}
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
-                                    Lokasi
-                                </h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Alamat</label>
-                                        <textarea
-                                            value={data.alamat}
-                                            onChange={(e) => setData('alamat', e.target.value)}
-                                            rows="3"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Koordinat X</label>
-                                            <input
-                                                type="text"
-                                                value={data.koordinat_x}
-                                                onChange={(e) => setData('koordinat_x', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Koordinat Y</label>
-                                            <input
-                                                type="text"
-                                                value={data.koordinat_y}
-                                                onChange={(e) => setData('koordinat_y', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="mt-3 sm:mt-4">
+                                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                        Alamat Update <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        value={data.alamat_update}
+                                        onChange={(e) => setData('alamat_update', e.target.value)}
+                                        rows="2"
+                                        className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                        required
+                                    />
                                 </div>
-                            </div>
 
-                            {/* Informasi Unit */}
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
-                                    Informasi Unit
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Unit UPI</label>
-                                        <input
-                                            type="text"
-                                            value={data.unitupi}
-                                            onChange={(e) => setData('unitupi', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Nama UPI</label>
-                                        <input
-                                            type="text"
-                                            value={data.nm_unitupi}
-                                            onChange={(e) => setData('nm_unitupi', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Unit AP</label>
-                                        <input
-                                            type="text"
-                                            value={data.unitap}
-                                            onChange={(e) => setData('unitap', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Nama AP</label>
-                                        <input
-                                            type="text"
-                                            value={data.nama_ap}
-                                            onChange={(e) => setData('nama_ap', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Unit UP</label>
-                                        <input
-                                            type="text"
-                                            value={data.unitup}
-                                            onChange={(e) => setData('unitup', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Nama UP</label>
-                                        <input
-                                            type="text"
-                                            value={data.nama_up}
-                                            onChange={(e) => setData('nama_up', e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Informasi Update & Keterangan */}
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
-                                    Informasi Update & Keterangan
-                                </h2>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Nama Update</label>
-                                            <input
-                                                type="text"
-                                                value={data.nama_update}
-                                                onChange={(e) => setData('nama_update', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Status Lapangan</label>
-                                            <input
-                                                type="text"
-                                                value={data.status_lapangan}
-                                                onChange={(e) => setData('status_lapangan', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Alamat Update</label>
-                                        <textarea
-                                            value={data.alamat_update}
-                                            onChange={(e) => setData('alamat_update', e.target.value)}
-                                            rows="2"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Lapangan</label>
-                                        <textarea
+                                {data.status_lapangan === 'Tidak bisa didata' && (
+                                    <div className="mt-3 sm:mt-4">
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Keterangan Lapangan <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
                                             value={data.ket_lapangan}
-                                            onChange={(e) => setData('ket_lapangan', e.target.value)}
-                                            rows="2"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
+                                            onChange={(e) => {
+                                                setData('ket_lapangan', e.target.value);
+                                                if (e.target.value !== 'Lainnya') {
+                                                    setData('ket_lapangan_lainnya', '');
+                                                }
+                                            }}
+                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                            required
+                                        >
+                                            <option value="">-- Pilih Keterangan --</option>
+                                            <option value="Rumah kosong">Rumah kosong</option>
+                                            <option value="Rumah tutup">Rumah tutup</option>
+                                            <option value="Anjing galak">Anjing galak</option>
+                                            <option value="Pagar terkunci">Pagar terkunci</option>
+                                            <option value="Penghuni tidak bersedia didata">Penghuni tidak bersedia didata</option>
+                                            <option value="Lainnya">Lainnya</option>
+                                        </select>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Pemadanan</label>
-                                        <textarea
-                                            value={data.ket_pemadanan}
-                                            onChange={(e) => setData('ket_pemadanan', e.target.value)}
-                                            rows="2"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
+                                        {data.ket_lapangan === 'Lainnya' && (
+                                            <div className="mt-2 sm:mt-3">
+                                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                    Keterangan Lainnya <span className="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    value={data.ket_lapangan_lainnya}
+                                                    onChange={(e) => setData('ket_lapangan_lainnya', e.target.value)}
+                                                    rows="2"
+                                                    className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                                    placeholder="Masukkan keterangan lainnya"
+                                                    required
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            </div>
+                                )}
+
+                                {data.status_lapangan === 'Bisa didata' && (
+                                    <div className="mt-3 sm:mt-4">
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Keterangan Pemadanan <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={data.ket_pemadanan}
+                                            onChange={(e) => {
+                                                setData('ket_pemadanan', e.target.value);
+                                                if (e.target.value !== 'Lainnya') {
+                                                    setData('ket_pemadanan_lainnya', '');
+                                                }
+                                            }}
+                                            className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                            required
+                                        >
+                                            <option value="">-- Pilih Keterangan --</option>
+                                            <option value="Beli dari pemilik lama">Beli dari pemilik lama</option>
+                                            <option value="Keluarga dari pemilik">Keluarga dari pemilik (Istri/Anak/dll.)</option>
+                                            <option value="Pengontrak/Penyewa">Pengontrak/Penyewa</option>
+                                            <option value="Penjaga/Pembantu">Penjaga/Pembantu</option>
+                                            <option value="Penghuni rumah dinas">Penghuni rumah dinas</option>
+                                            <option value="Perbaikan data sesuai KTP">Perbaikan data sesuai KTP</option>
+                                            <option value="Pemilik sudah meninggal">Pemilik sudah meninggal</option>
+                                            <option value="Lainnya">Lainnya</option>
+                                        </select>
+
+                                        {data.ket_pemadanan === 'Lainnya' && (
+                                            <div className="mt-2 sm:mt-3">
+                                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                                    Keterangan Lainnya <span className="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    value={data.ket_pemadanan_lainnya}
+                                                    onChange={(e) => setData('ket_pemadanan_lainnya', e.target.value)}
+                                                    rows="2"
+                                                    className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg invalid:border-red-500"
+                                                    placeholder="Masukkan keterangan lainnya"
+                                                    required
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
                         </div>
 
-                        {/* Submit Button */}
-                        <div className="mt-8 flex justify-end gap-3">
+                        <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                             <Link
-                                href={route('data-pelanggan.show', pelanggan.id)}
-                                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                                href={route('data-pelanggan.index', pelanggan.id)}
+                                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-700 text-sm sm:text-base rounded-lg hover:bg-gray-300 transition-colors duration-200 text-center"
                             >
                                 Batal
                             </Link>
+
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
+                                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
                             >
                                 {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                             </button>
@@ -333,6 +520,6 @@ export default function Edit({ pelanggan }) {
                     </form>
                 </div>
             </div>
-        </>
+        </UserLayout>
     );
 }

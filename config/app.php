@@ -2,6 +2,8 @@
 
 return [
 
+    
+
     /*
     |--------------------------------------------------------------------------
     | Application Name
@@ -104,6 +106,14 @@ return [
             explode(',', env('APP_PREVIOUS_KEYS', ''))
         ),
     ],
+
+    // 'providers' => [
+    //     Maatwebsite\Excel\ExcelServiceProvider::class,
+    // ],
+
+    // 'aliases' => [
+    //     'Excel' => Maatwebsite\Excel\Facades\Excel::class,
+    // ],
 
     /*
     |--------------------------------------------------------------------------

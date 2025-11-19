@@ -2,79 +2,142 @@ import React, { useEffect, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 
 const Navbar = () => {
-    const { url } = usePage(); // Mendapatkan URL saat ini
-    const isActive = (path) => url === path; // Mengecek apakah URL aktif
-    const [isAdmin, setIsAdmin] = useState(false); // State untuk admin
+    const { url } = usePage();
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Cek role pengguna dari API Laravel
+    const isActive = (path) => {
+        if (path === "/") {
+            return url === "/";
+        }
+        return url.startsWith(path);
+    };
+
     useEffect(() => {
-        fetch("/api/check-role") // Endpoint untuk cek role
+        fetch("/api/check-role")
             .then((response) => response.json())
-            .then((data) => setIsAdmin(data.isAdmin === 1)) // Set true jika admin
+            .then((data) => setIsAdmin(data.isAdmin === 1))
             .catch((error) => console.error("Error checking role:", error));
     }, []);
 
+    const getNavLinkClass = (path) => {
+        return `${
+            isActive(path)
+                ? "bg-blue-500 text-white"
+                : "text-black hover:bg-zinc-300 hover:text-white"
+        } font-mono rounded-lg py-2 px-3 sm:px-4 transition-all duration-300 text-xs sm:text-base whitespace-nowrap`;
+    };
+
     return (
-        <nav className="bg-white shadow-md">
-            <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-                {/* Logo */}
-                <div className="text-xl font-black font-mono">
-                    <Link href="/" className="text-gray-800">
-                        Back To School
-                    </Link>
+        <nav className="bg-white shadow-md fixed top-0 left-0 right-0 z-50">
+            <div className="mx-auto px-2 sm:px-4 py-2 sm:py-3">
+                {/* Tambahkan 'relative' di container parent agar absolute positioning bekerja */}
+                <div className="relative flex justify-between items-center">
+                    
+                    {/* 1. Logo (Tetap di Kiri) */}
+                    <div className="flex items-center gap-2 sm:gap-4 z-10">
+                        <img
+                            src="/images/danantara.png"
+                            alt="Danantara"
+                            className="h-6 sm:h-9 object-contain"
+                        />
+                        <img
+                            src="/images/pln.png"
+                            alt="PLN"
+                            className="h-10 sm:h-14 object-contain"
+                        />
+                    </div>
+
+                    {/* 2. Desktop Menu (Ditaruh di Tengah Menggunakan Absolute Position) */}
+                    <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 items-center gap-2 lg:gap-4">
+                        <Link href="/" className={getNavLinkClass("/")}>
+                            Dashboard
+                        </Link>
+                        <Link
+                            href="/peta-pelanggan"
+                            className={getNavLinkClass("/peta-pelanggan")}
+                        >
+                            Peta
+                        </Link>
+                        <Link
+                            href="/data-pelanggan"
+                            className={getNavLinkClass("/data-pelanggan")}
+                        >
+                            Data Pelanggan
+                        </Link>
+                        {isAdmin && (
+                            <Link
+                                href="/list-admin"
+                                className={getNavLinkClass("/list-admin")}
+                            >
+                                Admin
+                            </Link>
+                        )}
+                    </div>
+
+                    {/* 3. Mobile Menu Button (Tetap di Kanan pada tampilan HP) */}
+                    <button
+                        className="md:hidden p-2 hover:bg-gray-100 rounded-lg z-10"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d={
+                                    isMobileMenuOpen
+                                        ? "M6 18L18 6M6 6l12 12"
+                                        : "M4 6h16M4 12h16M4 18h16"
+                                }
+                            />
+                        </svg>
+                    </button>
+
+                    {/* Placeholder kosong untuk menyeimbangkan flexbox jika diperlukan di kanan (Opsional) */}
+                    {/* <div className="hidden md:flex w-[100px]"></div> */}
                 </div>
 
-                {/* Menu Items */}
-                <div className="space-x-6">
-                    <Link
-                        href="/"
-                        className={`${isActive("/") ? "bg-blue-500 text-white py-2 px-4 transition-all duration-300" : "text-black transition-all duration-300"} font-mono rounded-lg hover:text-white hover:text-lg hover:bg-zinc-300 hover:py-1 hover:px-3`}
-                    >
-                        Dashboard
-                    </Link>
-                    <Link
-                        href="/peta"
-                        className={`${isActive("/peta") ? "bg-blue-500 text-white py-2 px-4 transition-all duration-300" : "text-black transition-all duration-300"} font-mono rounded-lg hover:text-white hover:text-lg hover:bg-zinc-300 hover:py-1 hover:px-3`}
-                    >
-                        Peta
-                    </Link>
-                    <Link
-                        href="/list-sekolah"
-                        className={`${isActive("/list-sekolah") ? "bg-blue-500 text-white py-2 px-4 transition-all duration-300" : "text-black transition-all duration-300"} font-mono rounded-lg hover:text-white hover:text-lg hover:bg-zinc-300 hover:py-1 hover:px-3`}
-                    >
-                        Sekolah
-                    </Link>
-                    {isAdmin ? (
+                {/* Mobile Menu Dropdown */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden mt-3 pb-3 space-y-2 border-t pt-3">
                         <Link
-                            href="/list-admin"
-                            className={`${isActive("/list-admin") ? "bg-blue-500 text-white py-2 px-4 transition-all duration-300" : "text-black transition-all duration-300"} font-mono rounded-lg hover:text-white hover:text-lg hover:bg-zinc-300 hover:py-1 hover:px-3`}
+                            href="/"
+                            className={`block ${getNavLinkClass("/")} w-full text-left`}
+                            onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Admin
+                            Dashboard
                         </Link>
-                    ) : (
-                        ""
-                    )
-                    }
-                </div>
-
-                {/* Login/Logout Button */}
-                <div>
-                    {isAdmin ? (
                         <Link
-                            href="/admin/logout"
-                            className="bg-red-500 text-white py-2 px-4 transition-all duration-300 font-mono rounded-lg hover:text-white hover:text-lg hover:bg-red-700 hover:py-1 hover:px-3"
+                            href="/peta-pelanggan"
+                            className={`block ${getNavLinkClass("/peta-pelanggan")} w-full text-left`}
+                            onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Logout
+                            Peta
                         </Link>
-                    ) : (
                         <Link
-                            href="/login"
-                            className="bg-blue-500 text-white py-2 px-4 transition-all duration-300 font-mono rounded-lg hover:text-white hover:text-lg hover:bg-zinc-300 hover:py-1 hover:px-3"
+                            href="/data-pelanggan"
+                            className={`block ${getNavLinkClass("/data-pelanggan")} w-full text-left`}
+                            onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Login
+                            Data Pelanggan
                         </Link>
-                    )}
-                </div>
+                        {isAdmin && (
+                            <Link
+                                href="/list-admin"
+                                className={`block ${getNavLinkClass("/list-admin")} w-full text-left`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Admin
+                            </Link>
+                        )}
+                    </div>
+                )}
             </div>
         </nav>
     );

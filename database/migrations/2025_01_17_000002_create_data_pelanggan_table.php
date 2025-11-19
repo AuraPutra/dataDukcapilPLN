@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('idpel', 20)->nullable();
             $table->string('nama', 100)->nullable();
             $table->string('nik', 30)->nullable();
+            $table->string('ktp', 255)->nullable();
             $table->text('alamat')->nullable();
             $table->string('koordinat_x', 50)->nullable();
             $table->string('koordinat_y', 50)->nullable();

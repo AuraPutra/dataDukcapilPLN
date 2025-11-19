@@ -35,6 +35,8 @@ class DataPelanggan extends Model
         'idpel',
         'nama',
         'nik',
+        'ktp',
+        'email',
         'alamat',
         'koordinat_x',
         'koordinat_y',
@@ -46,7 +48,9 @@ class DataPelanggan extends Model
         'alamat_update',
         'status_lapangan',
         'ket_lapangan',
+        'ket_lapangan_lainnya',
         'ket_pemadanan',
+        'ket_pemadanan_lainnya',
     ];
 
     /**

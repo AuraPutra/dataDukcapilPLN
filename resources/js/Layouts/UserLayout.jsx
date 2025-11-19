@@ -1,16 +1,16 @@
 import React from "react";
 import Navbar from "@/Components/Navbar";
 
-const UserLayout = ({ children }) => {
-  return (
-    <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
-      <Navbar />
+export default function UserLayout({ children }) {
+    return (
+        <div className="min-h-screen bg-gray-100">
+            {/* Navbar */}
+            <Navbar />
 
-      {/* Page Content */}
-      <main className="flex-grow">{children}</main>
-    </div>
-  );
-};
-
-export default UserLayout;
+            {/* Beri jarak agar konten tidak tertutup navbar */}
+            <main className="pt-20 px-4">
+                {children}
+            </main>
+        </div>
+    );
+}
