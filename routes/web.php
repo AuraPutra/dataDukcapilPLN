@@ -26,23 +26,23 @@ use Illuminate\Http\Request;
 
 
 
-Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-Route::get('/dashboard/unit/{unitName}', [DashboardController::class, 'showUnit'])->name('dashboard.unit');
+Route::get('/', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
+Route::get('/dashboard/unit/{unitName}', [DashboardController::class, 'showUnit'])->middleware('auth')->name('dashboard.unit');
 
-// Data Pelanggan Routes
-Route::resource('data-pelanggan', DataPelangganController::class);
-Route::get('/peta-pelanggan', [DataPelangganController::class, 'map'])->name('data-pelanggan.map');
+// Data Pelanggan Routes - Protected with auth and data filter
+Route::middleware(['auth', 'data.filter'])->group(function () {
+    Route::resource('data-pelanggan', DataPelangganController::class);
+    Route::get('/peta-pelanggan', [DataPelangganController::class, 'map'])->name('data-pelanggan.map');
+    Route::get('/pelanggan/export-csv', [DataPelangganController::class, 'exportCsv'])->name('pelanggan.export.csv');
+    Route::get('/pelanggan/export-xls', [DataPelangganController::class, 'exportXls'])->name('pelanggan.export.xls');
+    Route::get('/pelanggan/export-excel-images', [DataPelangganController::class, 'exportExcelWithImages'])->name('pelanggan.export.excel.images');
+    Route::get('/data-pelanggan/download-ktp', [DataPelangganController::class, 'downloadAllKtp'])->name('data-pelanggan.download-ktp');
+});
 
+// User Management Routes - Only for UIDRKR admin
+Route::middleware(['auth'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\UserController::class);
+});
 
-Route::get('/pelanggan/export-csv', [DataPelangganController::class, 'exportCsv'])
-     ->name('pelanggan.export.csv');
-
-Route::get('/pelanggan/export-xls', [DataPelangganController::class, 'exportXls'])
-    ->name('pelanggan.export.xls');
-
-Route::get('/pelanggan/export-excel-images', [DataPelangganController::class, 'exportExcelWithImages'])
-    ->name('pelanggan.export.excel.images');
-   
-Route::get('/data-pelanggan/download-ktp', [DataPelangganController::class, 'downloadAllKtp'])
-    ->name('data-pelanggan.download-ktp');
+require __DIR__ . '/auth.php';
 

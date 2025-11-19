@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import UserLayout from '@/Layouts/UserLayout';
 
-export default function Index({ pelanggan, unitupList, tarifList, filters }) {
+export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
     const [search, setSearch] = useState(filters.search || '');
-    const [unitup, setUnitup] = useState(filters.unitup || '');
+    const [namaUp, setNamaUp] = useState(filters.nama_up || '');
     const [tarif, setTarif] = useState(filters.tarif || '');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -21,7 +21,7 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
         e.preventDefault();
         router.get(route('data-pelanggan.index'), {
             search,
-            unitup,
+            nama_up: namaUp,
             tarif
         }, {
             preserveState: true,
@@ -31,7 +31,7 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
 
     const handleReset = () => {
         setSearch('');
-        setUnitup('');
+        setNamaUp('');
         setTarif('');
         router.get(route('data-pelanggan.index'));
     };
@@ -89,15 +89,15 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                        Unit UP
+                                        Nama UP
                                     </label>
                                     <select
-                                        value={unitup}
-                                        onChange={(e) => setUnitup(e.target.value)}
+                                        value={namaUp}
+                                        onChange={(e) => setNamaUp(e.target.value)}
                                         className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="">Semua</option>
-                                        {unitupList.map((unit, index) => (
+                                        {namaUpList.map((unit, index) => (
                                             <option key={index} value={unit}>
                                                 {unit}
                                             </option>
@@ -171,9 +171,9 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
 
                                         {/* Info Grid */}
                                         <div className="grid grid-cols-2 gap-2 text-xs">
-                                            <div>
-                                                <p className="text-gray-600">NIK</p>
-                                                <p className="font-medium text-gray-800 truncate">{item.nik || '-'}</p>
+                                            <div className="col-span-2">
+                                                <p className="text-gray-600">Alamat Update</p>
+                                                <p className="font-medium text-gray-800">{item.alamat_update || 'Belum diisi'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-gray-600">Tarif</p>
@@ -183,9 +183,9 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
                                                 <p className="text-gray-600">Daya</p>
                                                 <p className="font-medium text-gray-800">{item.daya || '-'} VA</p>
                                             </div>
-                                            <div>
+                                            <div className="col-span-2">
                                                 <p className="text-gray-600">Meter</p>
-                                                <p className="font-medium text-gray-800 truncate">{item.nomor_meter || '-'}</p>
+                                                <p className="font-medium text-gray-800">{item.nomor_meter || '-'}</p>
                                             </div>
                                         </div>
 
@@ -257,7 +257,7 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
                                                 Nama
                                             </th>
                                             <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-medium text-gray-500 uppercase">
-                                                NIK
+                                                Alamat Update
                                             </th>
                                             <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-medium text-gray-500 uppercase">
                                                 Tarif
@@ -285,8 +285,8 @@ export default function Index({ pelanggan, unitupList, tarifList, filters }) {
                                                             <span className="bg-gray-300 text-gray-700 text-xs px-2 py-1 rounded-full whitespace-nowrap">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-gray-500 truncate">
-                                                        {item.nik || '-'}
+                                                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-gray-500">
+                                                        {item.alamat_update || 'Belum diisi'}
                                                     </td>
                                                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-gray-500">
                                                         {item.tarif || '-'}

@@ -20,7 +20,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'is_admin',       // Menambahkan is_admin
+        'jabatan',
+        'ul_up',
+        'ui_up',
     ];
 
     /**
@@ -33,13 +35,45 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be cast.
+     * Get the attributes that should be cast.
      *
-     * @var array<string, string>
+     * @return array<string, string>
      */
-    // protected $casts = [
-    //     'email_verified_at' => 'datetime',
-    //     'password' => 'hashed',
-    //     'is_admin' => 'boolean',  // Casting is_admin ke boolean
-    // ];
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    /**
+     * Check if user has UIDRKR role (can access all data)
+     *
+     * @return bool
+     */
+    public function isUidrkr(): bool
+    {
+        return $this->ul_up === 'UIDRKR';
+    }
+
+    /**
+     * Check if user has UP3 role
+     *
+     * @return bool
+     */
+    public function isUp3(): bool
+    {
+        return strpos($this->ul_up, 'UP3') === 0;
+    }
+
+    /**
+     * Check if user has ULP role
+     *
+     * @return bool
+     */
+    public function isUlp(): bool
+    {
+        return strpos($this->ul_up, 'ULP') === 0;
+    }
 }

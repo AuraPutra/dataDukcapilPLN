@@ -4,6 +4,7 @@ npm install recharts
 npm install styled-components
 npm install react-router-dom
 php artisan migrate
+npm install leaflet
 
 #run
 npm run dev

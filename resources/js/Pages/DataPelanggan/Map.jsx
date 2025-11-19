@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import UserLayout from '@/Layouts/UserLayout';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -32,13 +32,14 @@ const GREEN_ICON = createMarkerIcon('#22c55e'); // Hijau - Sudah
 const RED_ICON = createMarkerIcon('#ef4444');   // Merah - Belum
 
 export default function Map({ pelanggan }) {
+    const { auth } = usePage().props;
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const clusterGroupRef = useRef(null);
-    
+
     const [selectedPelanggan, setSelectedPelanggan] = useState(null);
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
-    const [filterStatus, setFilterStatus] = useState('all'); 
+    const [filterStatus, setFilterStatus] = useState('all');
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -65,14 +66,46 @@ export default function Map({ pelanggan }) {
         };
     }, [pelanggan]);
 
+    // 3. Hitung center berdasarkan data density (centroid of markers)
+    const mapCenter = useMemo(() => {
+        // Default center: Pekanbaru
+        const defaultCenter = [0.5074, 101.4478];
+
+        // Jika user adalah UIDRKR (admin), gunakan default Pekanbaru
+        if (auth?.user?.ul_up === 'UIDRKR') {
+            return defaultCenter;
+        }
+
+        // Filter pelanggan yang memiliki koordinat valid
+        const validCoords = pelanggan.filter(item => {
+            const lat = parseFloat(item.koordinat_x);
+            const lng = parseFloat(item.koordinat_y);
+            return !isNaN(lat) && !isNaN(lng);
+        });
+
+        // Jika tidak ada data valid, gunakan default
+        if (validCoords.length === 0) {
+            return defaultCenter;
+        }
+
+        // Hitung centroid (rata-rata koordinat)
+        const sumLat = validCoords.reduce((sum, item) => sum + parseFloat(item.koordinat_x), 0);
+        const sumLng = validCoords.reduce((sum, item) => sum + parseFloat(item.koordinat_y), 0);
+
+        const centroidLat = sumLat / validCoords.length;
+        const centroidLng = sumLng / validCoords.length;
+
+        return [centroidLat, centroidLng];
+    }, [pelanggan, auth]);
+
     // 3. Inisialisasi Peta
     useEffect(() => {
         if (!mapRef.current) return;
 
         const map = L.map(mapRef.current, {
             zoomControl: false // Matikan zoom control default (kita pindahkan nanti jika perlu)
-        }).setView([0.5074, 101.4478], 12);
-        
+        }).setView(mapCenter, 12);
+
         // Add Zoom Control di posisi yang aman
         L.control.zoom({
             position: 'topleft'
@@ -99,7 +132,7 @@ export default function Map({ pelanggan }) {
         return () => {
             map.remove();
         };
-    }, []);
+    }, [mapCenter]);
 
     // 4. Update Marker
     useEffect(() => {
@@ -114,8 +147,8 @@ export default function Map({ pelanggan }) {
             if (!isNaN(lat) && !isNaN(lng)) {
                 const isSurveyed = item.status_lapangan;
                 const icon = isSurveyed ? GREEN_ICON : RED_ICON;
-                const statusText = isSurveyed 
-                    ? '<span style="color:green; font-weight:bold;">✔ Sudah Survei</span>' 
+                const statusText = isSurveyed
+                    ? '<span style="color:green; font-weight:bold;">✔ Sudah Survei</span>'
                     : '<span style="color:red; font-weight:bold;">⚠ Belum Survei</span>';
 
                 const marker = L.marker([lat, lng], { icon: icon });
@@ -129,7 +162,7 @@ export default function Map({ pelanggan }) {
                 `;
 
                 marker.bindPopup(popupContent);
-                
+
                 // Handle click marker untuk state React
                 marker.on('click', () => {
                     setSelectedPelanggan(item);
@@ -156,7 +189,7 @@ export default function Map({ pelanggan }) {
 
             {/* Gunakan 100dvh untuk mobile agar tidak tertutup address bar */}
             <div className="flex flex-col bg-gray-100 w-full h-screen supports-[height:100dvh]:h-[100dvh] overflow-hidden">
-                
+
                 {/* Header Compact */}
                 <div className="bg-white shadow-md z-20 relative flex-shrink-0">
                     <div className="px-3 py-2 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
@@ -172,7 +205,7 @@ export default function Map({ pelanggan }) {
                                     Kembali
                                 </Link>
                             </div>
-                            
+
                             {/* Stats Row */}
                             <div className="flex gap-3 mt-1 text-[10px] sm:text-sm text-gray-600 overflow-x-auto whitespace-nowrap no-scrollbar">
                                 <span className="bg-gray-100 px-2 py-0.5 rounded border">Total: <b>{statusCount.total}</b></span>
@@ -201,7 +234,7 @@ export default function Map({ pelanggan }) {
                                     key={filter.id}
                                     onClick={() => setFilterStatus(filter.id)}
                                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                                        filterStatus === filter.id 
+                                        filterStatus === filter.id
                                             ? (filter.activeText || 'text-white') + ' ' + (filter.activeClass || 'bg-blue-600 border-blue-600')
                                             : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                                     }`}
@@ -239,17 +272,17 @@ export default function Map({ pelanggan }) {
                         <>
                              {/* Overlay Background untuk mobile */}
                              {isMobile && (
-                                <div 
-                                    className="absolute inset-0 bg-black/20 z-[1000]" 
+                                <div
+                                    className="absolute inset-0 bg-black/20 z-[1000]"
                                     onClick={() => setSelectedPelanggan(null)}
                                 />
                             )}
 
                             <div className={`
-                                absolute bg-white shadow-2xl p-4 z-[1100] border border-gray-100 
+                                absolute bg-white shadow-2xl p-4 z-[1100] border border-gray-100
                                 transition-transform duration-300 ease-in-out
-                                ${isMobile 
-                                    ? 'bottom-0 left-0 right-0 rounded-t-2xl max-h-[60vh] overflow-y-auto animate-slide-up' 
+                                ${isMobile
+                                    ? 'bottom-0 left-0 right-0 rounded-t-2xl max-h-[60vh] overflow-y-auto animate-slide-up'
                                     : 'top-4 right-4 rounded-xl w-80 animate-fade-in'
                                 }
                             `}>
@@ -267,7 +300,7 @@ export default function Map({ pelanggan }) {
                                         </h3>
                                         <p className="text-xs text-gray-500 mt-0.5">ID: {selectedPelanggan.idpel}</p>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setSelectedPelanggan(null)}
                                         className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1.5 transition-colors flex-shrink-0"
                                     >
@@ -299,7 +332,7 @@ export default function Map({ pelanggan }) {
                                             <div className="font-medium text-gray-900">{selectedPelanggan.daya || '-'} VA</div>
                                         </div>
                                     </div>
-                                    
+
                                     <div>
                                         <label className="text-[10px] uppercase text-gray-500 block">Alamat</label>
                                         <div className="text-gray-900 text-xs sm:text-sm leading-snug bg-white">
@@ -308,7 +341,7 @@ export default function Map({ pelanggan }) {
                                     </div>
 
                                     <div className="pt-2">
-                                        <Link 
+                                        <Link
                                             href={route('data-pelanggan.show', selectedPelanggan.id)}
                                             className="block w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm active:scale-[0.98]"
                                         >
@@ -321,7 +354,7 @@ export default function Map({ pelanggan }) {
                     )}
                 </div>
             </div>
-            
+
             {/* CSS inline untuk animasi sederhana */}
             <style>{`
                 .no-scrollbar::-webkit-scrollbar {

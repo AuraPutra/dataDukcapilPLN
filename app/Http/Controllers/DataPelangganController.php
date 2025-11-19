@@ -11,11 +11,44 @@ use Illuminate\Support\Facades\File;
 class DataPelangganController extends Controller
 {
     /**
+     * Apply data filter based on user role
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function applyUserFilter($query, Request $request)
+    {
+        if (!auth()->check()) {
+            return $query;
+        }
+
+        $filterType = $request->input('data_filter_type');
+        $filterValue = $request->input('data_filter_value');
+
+        if ($filterType === 'none') {
+            // UIDRKR - no filter
+            return $query;
+        } elseif ($filterType === 'nama_ap') {
+            // UP3 - filter by nama_ap
+            return $query->where('nama_ap', $filterValue);
+        } elseif ($filterType === 'nama_up') {
+            // ULP - filter by nama_up
+            return $query->where('nama_up', $filterValue);
+        }
+
+        return $query;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $query = DataPelanggan::query();
+
+        // Apply user-based filter
+        $query = $this->applyUserFilter($query, $request);
 
         // Search functionality
         if ($request->has('search') && $request->search != '') {
@@ -28,9 +61,9 @@ class DataPelangganController extends Controller
             });
         }
 
-        // Filter by unitup
-        if ($request->has('unitup') && $request->unitup != '') {
-            $query->where('unitup', $request->unitup);
+        // Filter by nama_up
+        if ($request->has('nama_up') && $request->nama_up != '') {
+            $query->where('nama_up', $request->nama_up);
         }
 
         // Filter by tarif
@@ -38,17 +71,26 @@ class DataPelangganController extends Controller
             $query->where('tarif', $request->tarif);
         }
 
+        // Sort: status_lapangan null first, then by id
+        $query->orderByRaw('CASE WHEN status_lapangan IS NULL THEN 0 ELSE 1 END')
+              ->orderBy('id', 'asc');
+
         $pelanggan = $query->paginate(50)->withQueryString();
 
-        // Get unique values for filters
-        $unitupList = DataPelanggan::distinct()->pluck('unitup')->filter()->values();
-        $tarifList = DataPelanggan::distinct()->pluck('tarif')->filter()->values();
+        // Get unique values for filters (also filtered by user role)
+        $namaUpQuery = DataPelanggan::query();
+        $namaUpQuery = $this->applyUserFilter($namaUpQuery, $request);
+        $namaUpList = $namaUpQuery->distinct()->pluck('nama_up')->filter()->values();
+
+        $tarifQuery = DataPelanggan::query();
+        $tarifQuery = $this->applyUserFilter($tarifQuery, $request);
+        $tarifList = $tarifQuery->distinct()->pluck('tarif')->filter()->values();
 
         return Inertia::render('DataPelanggan/Index', [
             'pelanggan' => $pelanggan,
-            'unitupList' => $unitupList,
+            'namaUpList' => $namaUpList,
             'tarifList' => $tarifList,
-            'filters' => $request->only(['search', 'unitup', 'tarif'])
+            'filters' => $request->only(['search', 'nama_up', 'tarif'])
         ]);
     }
 
@@ -191,24 +233,33 @@ class DataPelangganController extends Controller
     /**
      * Get all data for map view.
      */
-    public function map()
+    public function map(Request $request)
     {
-        $pelanggan = DataPelanggan::whereNotNull('koordinat_x')
+        $query = DataPelanggan::whereNotNull('koordinat_x')
             ->whereNotNull('koordinat_y')
             ->where('koordinat_x', '!=', '')
-            ->where('koordinat_y', '!=', '')
-            ->get();
+            ->where('koordinat_y', '!=', '');
+
+        // Apply user-based filter
+        $query = $this->applyUserFilter($query, $request);
+
+        $pelanggan = $query->get();
 
         return Inertia::render('DataPelanggan/Map', [
             'pelanggan' => $pelanggan
         ]);
     }
 
-    public function exportCsv()
+    public function exportCsv(Request $request)
     {
         $filename = "data_pelanggan_" . date('YmdHis') . ".csv";
 
-        $pelanggan = DataPelanggan::all();
+        $query = DataPelanggan::query();
+
+        // Apply user-based filter
+        $query = $this->applyUserFilter($query, $request);
+
+        $pelanggan = $query->get();
 
         $headers = [
             "Content-type" => "text/csv",
@@ -243,11 +294,16 @@ class DataPelangganController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function exportXls()
+    public function exportXls(Request $request)
     {
         $filename = "data_survei_" . date('YmdHis') . ".xlsx";
-        
-        $pelanggan = DataPelanggan::all();
+
+        $query = DataPelanggan::query();
+
+        // Apply user-based filter
+        $query = $this->applyUserFilter($query, $request);
+
+        $pelanggan = $query->get();
 
         // Define header columns sesuai template
         $headers = [
@@ -273,15 +329,15 @@ class DataPelangganController extends Controller
         // Write data
         foreach ($pelanggan as $p) {
             // Handle Keterangan Lapangan
-            $ket_lapangan = ($p->ket_lapangan === 'Lainnya' && $p->ket_lapangan_lainnya) 
-                ? $p->ket_lapangan_lainnya 
+            $ket_lapangan = ($p->ket_lapangan === 'Lainnya' && $p->ket_lapangan_lainnya)
+                ? $p->ket_lapangan_lainnya
                 : ($p->ket_lapangan ?? '');
-            
+
             // Handle Keterangan Pemadanan
-            $ket_pemadanan = ($p->ket_pemadanan === 'Lainnya' && $p->ket_pemadanan_lainnya) 
-                ? $p->ket_pemadanan_lainnya 
+            $ket_pemadanan = ($p->ket_pemadanan === 'Lainnya' && $p->ket_pemadanan_lainnya)
+                ? $p->ket_pemadanan_lainnya
                 : ($p->ket_pemadanan ?? '');
-            
+
             $row = [
                 $p->idpel,
                 $p->email ?? '',

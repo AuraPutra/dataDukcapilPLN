@@ -11,10 +11,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\AdminAuth::class
+            \App\Http\Middleware\ApplyDataFilter::class,
+        ]);
+
+        $middleware->alias([
+            'data.filter' => \App\Http\Middleware\ApplyDataFilter::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

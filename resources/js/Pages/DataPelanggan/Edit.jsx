@@ -7,8 +7,11 @@ export default function Edit({ pelanggan }) {
     const [alertMessage, setAlertMessage] = useState(null);
     const [alertType, setAlertType] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const { flash } = usePage().props;
-    
+    const { flash, auth } = usePage().props;
+
+    // Check if user is admin (UIDRKR)
+    const isAdmin = auth?.user?.ul_up === 'UIDRKR';
+
     useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth < 768);
@@ -16,7 +19,7 @@ export default function Edit({ pelanggan }) {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-    
+
     useEffect(() => {
         if (flash.success) {
             setAlertType('success');
@@ -33,7 +36,7 @@ export default function Edit({ pelanggan }) {
             }, 5000);
         }
     }, [flash]);
-    
+
     const sudahDisurvei =
         pelanggan.nama_update ||
         pelanggan.alamat_update ||
@@ -43,13 +46,29 @@ export default function Edit({ pelanggan }) {
 
     const { data, setData, post, processing, errors } = useForm({
         _method: 'PUT',
+        nama: pelanggan.nama || '',
+        nik: pelanggan.nik || '',
+        idpel: pelanggan.idpel || '',
+        nomor_meter: pelanggan.nomor_meter || '',
+        tarif: pelanggan.tarif || '',
+        daya: pelanggan.daya || '',
+        kode_golongan: pelanggan.kode_golongan || '',
+        alamat: pelanggan.alamat || '',
+        koordinat_x: pelanggan.koordinat_x || '',
+        koordinat_y: pelanggan.koordinat_y || '',
+        unitupi: pelanggan.unitupi || '',
+        nm_unitupi: pelanggan.nm_unitupi || '',
+        unitap: pelanggan.unitap || '',
+        nama_ap: pelanggan.nama_ap || '',
+        unitup: pelanggan.unitup || '',
+        nama_up: pelanggan.nama_up || '',
         nama_update: pelanggan.nama_update || '',
         ktp: null,
         email: pelanggan.email || '',
         alamat_update: pelanggan.alamat_update || '',
         status_lapangan: pelanggan.status_lapangan || '',
         ket_lapangan: pelanggan.ket_lapangan || '',
-        ket_lapangan_lainnya: '', // Asumsi data ini tidak disimpan di DB terpisah, atau bisa diambil jika ada
+        ket_lapangan_lainnya: '',
         ket_pemadanan: pelanggan.ket_pemadanan || '',
         ket_pemadanan_lainnya: '',
     });
@@ -70,7 +89,7 @@ export default function Edit({ pelanggan }) {
         e.preventDefault();
 
         // --- VALIDASI MANUAL SEBELUM SUBMIT ---
-        
+
         // 1. Cek field dasar
         if (!data.nama_update || !data.email || !data.alamat_update || !data.status_lapangan) {
             setAlertType('error');
@@ -123,7 +142,7 @@ export default function Edit({ pelanggan }) {
         if (data.ket_pemadanan !== 'Lainnya') {
             submitData.ket_pemadanan_lainnya = '';
         }
-        
+
         post(route('data-pelanggan.update', pelanggan.id), {
             data: submitData,
             forceFormData: true,
@@ -150,8 +169,8 @@ export default function Edit({ pelanggan }) {
 
             {alertMessage && (
                 <div className={`fixed top-2 sm:top-4 right-2 sm:right-4 z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 text-sm sm:text-base ${
-                    alertType === 'success' 
-                        ? 'bg-green-500 text-white' 
+                    alertType === 'success'
+                        ? 'bg-green-500 text-white'
                         : 'bg-red-500 text-white'
                 }`}>
                     {alertType === 'success' ? (
@@ -207,24 +226,54 @@ export default function Edit({ pelanggan }) {
                                 </h2>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-                                    {[
-                                        ['Nama', pelanggan.nama],
-                                        ['NIK', pelanggan.nik],
-                                        ['ID Pelanggan', pelanggan.idpel],
-                                        ['Nomor Meter', pelanggan.nomor_meter],
-                                    ].map(([label, value]) => (
-                                        <div key={label}>
-                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                                {label}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                disabled
-                                                value={value}
-                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                                            />
-                                        </div>
-                                    ))}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Nama
+                                        </label>
+                                        <input
+                                            type="text"
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.nama : pelanggan.nama}
+                                            onChange={(e) => setData('nama', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            NIK
+                                        </label>
+                                        <input
+                                            type="text"
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.nik : pelanggan.nik}
+                                            onChange={(e) => setData('nik', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            ID Pelanggan
+                                        </label>
+                                        <input
+                                            type="text"
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.idpel : pelanggan.idpel}
+                                            onChange={(e) => setData('idpel', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Nomor Meter
+                                        </label>
+                                        <input
+                                            type="text"
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.nomor_meter : pelanggan.nomor_meter}
+                                            onChange={(e) => setData('nomor_meter', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
                                 </div>
                             </section>
 
@@ -234,22 +283,39 @@ export default function Edit({ pelanggan }) {
                                     Informasi Listrik
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-                                    {[
-                                        ['Tarif', pelanggan.tarif],
-                                        ['Daya (VA)', pelanggan.daya],
-                                        ['Kode Golongan', pelanggan.kode_golongan],
-                                    ].map(([label, value]) => (
-                                        <div key={label}>
-                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                                {label}
-                                            </label>
-                                            <input
-                                                disabled
-                                                value={value}
-                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                                            />
-                                        </div>
-                                    ))}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Tarif
+                                        </label>
+                                        <input
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.tarif : pelanggan.tarif}
+                                            onChange={(e) => setData('tarif', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Daya (VA)
+                                        </label>
+                                        <input
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.daya : pelanggan.daya}
+                                            onChange={(e) => setData('daya', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Kode Golongan
+                                        </label>
+                                        <input
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.kode_golongan : pelanggan.kode_golongan}
+                                            onChange={(e) => setData('kode_golongan', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
                                 </div>
                             </section>
 
@@ -261,27 +327,35 @@ export default function Edit({ pelanggan }) {
 
                                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Alamat</label>
                                 <textarea
-                                    disabled
-                                    value={pelanggan.alamat}
-                                    className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                    disabled={!isAdmin}
+                                    value={isAdmin ? data.alamat : pelanggan.alamat}
+                                    onChange={(e) => setData('alamat', e.target.value)}
+                                    className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
                                 />
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-3 sm:mt-4">
-                                    {[
-                                        ['Koordinat X', pelanggan.koordinat_x],
-                                        ['Koordinat Y', pelanggan.koordinat_y],
-                                    ].map(([label, value]) => (
-                                        <div key={label}>
-                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                                {label}
-                                            </label>
-                                            <input
-                                                disabled
-                                                value={value}
-                                                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                                            />
-                                        </div>
-                                    ))}
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Koordinat X
+                                        </label>
+                                        <input
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.koordinat_x : pelanggan.koordinat_x}
+                                            onChange={(e) => setData('koordinat_x', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                                            Koordinat Y
+                                        </label>
+                                        <input
+                                            disabled={!isAdmin}
+                                            value={isAdmin ? data.koordinat_y : pelanggan.koordinat_y}
+                                            onChange={(e) => setData('koordinat_y', e.target.value)}
+                                            className={`w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg ${!isAdmin ? 'bg-gray-100 text-gray-600' : ''}`}
+                                        />
+                                    </div>
                                 </div>
                             </section>
 
@@ -371,9 +445,9 @@ export default function Edit({ pelanggan }) {
                                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                             Preview KTP
                                         </label>
-                                        <img 
-                                            src={ktpPreview || `/storage/${pelanggan.ktp}`} 
-                                            alt="KTP Preview" 
+                                        <img
+                                            src={ktpPreview || `/storage/${pelanggan.ktp}`}
+                                            alt="KTP Preview"
                                             className="h-24 sm:h-40 rounded border shadow-sm object-cover max-w-full"
                                         />
                                     </div>

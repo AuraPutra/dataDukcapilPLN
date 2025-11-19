@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 
 const Navbar = () => {
-    const { url } = usePage();
-    const [isAdmin, setIsAdmin] = useState(false);
+    const page = usePage();
+    const url = page.url;
+    const auth = page.props.auth;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Check if user is UIDRKR (admin)
+    const isAdmin = auth?.user?.ul_up === 'UIDRKR';
 
     const isActive = (path) => {
         if (path === "/") {
@@ -13,12 +17,10 @@ const Navbar = () => {
         return url.startsWith(path);
     };
 
-    useEffect(() => {
-        fetch("/api/check-role")
-            .then((response) => response.json())
-            .then((data) => setIsAdmin(data.isAdmin === 1))
-            .catch((error) => console.error("Error checking role:", error));
-    }, []);
+    const handleLogout = (e) => {
+        e.preventDefault();
+        router.post('/logout');
+    };
 
     const getNavLinkClass = (path) => {
         return `${
@@ -33,7 +35,7 @@ const Navbar = () => {
             <div className="mx-auto px-2 sm:px-4 py-2 sm:py-3">
                 {/* Tambahkan 'relative' di container parent agar absolute positioning bekerja */}
                 <div className="relative flex justify-between items-center">
-                    
+
                     {/* 1. Logo (Tetap di Kiri) */}
                     <div className="flex items-center gap-2 sm:gap-4 z-10">
                         <img
@@ -67,12 +69,30 @@ const Navbar = () => {
                         </Link>
                         {isAdmin && (
                             <Link
-                                href="/list-admin"
-                                className={getNavLinkClass("/list-admin")}
+                                href="/users"
+                                className={getNavLinkClass("/users")}
                             >
-                                Admin
+                                Manajemen User
                             </Link>
                         )}
+                    </div>
+
+                    {/* Logout Button (Desktop) */}
+                    <div className="hidden md:flex items-center gap-3 z-10">
+                        <div className="text-right">
+                            <div className="text-sm font-semibold text-gray-800">
+                                {auth?.user?.name || 'User'}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                                {auth?.user?.ul_up || '-'}
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="bg-red-500 hover:bg-red-600 text-white font-mono rounded-lg py-2 px-4 transition-all duration-300 text-base"
+                        >
+                            Logout
+                        </button>
                     </div>
 
                     {/* 3. Mobile Menu Button (Tetap di Kanan pada tampilan HP) */}
@@ -129,13 +149,27 @@ const Navbar = () => {
                         </Link>
                         {isAdmin && (
                             <Link
-                                href="/list-admin"
-                                className={`block ${getNavLinkClass("/list-admin")} w-full text-left`}
+                                href="/users"
+                                className={`block ${getNavLinkClass("/users")} w-full text-left`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                Admin
+                                Manajemen User
                             </Link>
                         )}
+                        <div className="pt-2 border-t">
+                            <div className="text-sm font-semibold text-gray-800 mb-1">
+                                {auth?.user?.name || 'User'}
+                            </div>
+                            <div className="text-xs text-gray-600 mb-2">
+                                {auth?.user?.ul_up || '-'}
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="block bg-red-500 hover:bg-red-600 text-white font-mono rounded-lg py-2 px-3 w-full text-left transition-all duration-300 text-xs"
+                        >
+                            Logout
+                        </button>
                     </div>
                 )}
             </div>
