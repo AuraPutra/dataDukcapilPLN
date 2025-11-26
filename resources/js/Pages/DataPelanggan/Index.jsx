@@ -1,12 +1,33 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import UserLayout from '@/Layouts/UserLayout';
 
 export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
+    const { auth, flash } = usePage().props;
+    const isAdmin = auth?.user?.ul_up === 'UIDRKR';
+
     const [search, setSearch] = useState(filters.search || '');
     const [namaUp, setNamaUp] = useState(filters.nama_up || '');
     const [tarif, setTarif] = useState(filters.tarif || '');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertType, setAlertType] = useState('success');
+
+    React.useEffect(() => {
+        if (flash.success) {
+            setAlertType('success');
+            setAlertMessage(flash.success);
+            setShowAlert(true);
+            setTimeout(() => setShowAlert(false), 5000);
+        }
+        if (flash.error) {
+            setAlertType('error');
+            setAlertMessage(flash.error);
+            setShowAlert(true);
+            setTimeout(() => setShowAlert(false), 5000);
+        }
+    }, [flash]);
 
     React.useEffect(() => {
         const handleResize = () => {
@@ -46,6 +67,23 @@ export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
         <UserLayout>
             <Head title="Data Pelanggan PLN" />
 
+            {showAlert && (
+                <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 ${
+                    alertType === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                }`}>
+                    {alertType === 'success' ? (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    )}
+                    <span>{alertMessage}</span>
+                </div>
+            )}
+
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-8 px-2 sm:px-4">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
@@ -59,15 +97,17 @@ export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
                                     Kelola data pelanggan listrik PLN UID Riau dan Kepulauan Riau
                                 </p>
                             </div>
-                            <Link
-                                href={route('data-pelanggan.create')}
-                                className="px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 shadow-lg text-xs sm:text-base whitespace-nowrap"
-                            >
-                                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Tambah
-                            </Link>
+                            {isAdmin && (
+                                <Link
+                                    href={route('data-pelanggan.create')}
+                                    className="px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 shadow-lg text-xs sm:text-base whitespace-nowrap"
+                                >
+                                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Tambah
+                                </Link>
+                            )}
                         </div>
                     </div>
 
@@ -209,6 +249,14 @@ export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
                                             >
                                                 Edit
                                             </Link>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className="flex-1 text-center px-3 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -308,6 +356,14 @@ export default function Index({ pelanggan, namaUpList, tarifList, filters }) {
                                                             >
                                                                 Edit
                                                             </Link>
+                                                            {isAdmin && (
+                                                                <button
+                                                                    onClick={() => handleDelete(item.id)}
+                                                                    className="text-red-600 hover:text-red-900 font-medium"
+                                                                >
+                                                                    Hapus
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

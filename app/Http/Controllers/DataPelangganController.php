@@ -99,6 +99,11 @@ class DataPelangganController extends Controller
      */
     public function create()
     {
+        // Only UIDRKR admin can create new data
+        if (auth()->user()->ul_up !== 'UIDRKR') {
+            abort(403, 'Anda tidak memiliki akses untuk menambah data.');
+        }
+
         return Inertia::render('DataPelanggan/Create');
     }
 
@@ -107,6 +112,11 @@ class DataPelangganController extends Controller
      */
     public function store(Request $request)
     {
+        // Only UIDRKR admin can store new data
+        if (auth()->user()->ul_up !== 'UIDRKR') {
+            abort(403, 'Anda tidak memiliki akses untuk menambah data.');
+        }
+
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
             'nik' => 'nullable|string|max:30',
@@ -231,6 +241,16 @@ class DataPelangganController extends Controller
      */
     public function destroy(DataPelanggan $dataPelanggan)
     {
+        // Only UIDRKR admin can delete data
+        if (auth()->user()->ul_up !== 'UIDRKR') {
+            abort(403, 'Anda tidak memiliki akses untuk menghapus data.');
+        }
+
+        // Delete KTP file if exists
+        if ($dataPelanggan->ktp) {
+            \Storage::disk('public')->delete($dataPelanggan->ktp);
+        }
+
         $dataPelanggan->delete();
 
         return redirect()->route('data-pelanggan.index')
